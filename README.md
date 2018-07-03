@@ -5,7 +5,7 @@
 
 ## Architecture
 
-Kubernetes based platform for jupiter with strong Github integration
+TK3 is a kubernetes based platform for jupiter with strong Github integration.
 
 ## Installation
 
