@@ -1,10 +1,11 @@
-# Jupyter instance controller for kubernetes 
+# Jupyter instance controller for kubernetes
 [![Build Status](https://travis-ci.org/beda-software/tk3.svg?branch=master)](https://travis-ci.org/beda-software/tk3)
 
 
 
 ## Architecture
 
+Kubernetes based platform for jupiter with strong Github integration
 
 ## Installation
 
