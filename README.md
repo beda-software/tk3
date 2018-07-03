@@ -7,6 +7,8 @@
 
 TK3 is a kubernetes based platform for jupiter with strong Github integration.
 
+![schema](https://github.com/beda-software/tk3/blob/master/images/idea.jpg)
+
 ## Installation
 
 ```sh
