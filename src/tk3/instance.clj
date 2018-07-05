@@ -22,10 +22,34 @@
              :metadata {:name res-name
                         :namespace ns}}))
 
+(defmethod u/*fn ::create-deployment [{inst :resource}]
+  (let [res (k8s/patch (model/jupyter-deployment inst))]
+    (if (= (:kind res) "Status")
+      {::u/status :error
+       ::u/message (str res)}
+      {::u/status :success})))
+
+(defmethod u/*fn ::create-service [{inst :resource}]
+  (let [res (k8s/patch (model/jupyter-service inst))]
+    (if (= (:kind res) "Status")
+      {::u/status :error
+       ::u/message (str res)}
+      {::u/status :success})))
+
+(defmethod u/*fn ::create-ingress [{inst :resource}]
+  (let [res (k8s/patch (model/jupyter-ingress inst))]
+    (if (= (:kind res) "Status")
+      {::u/status :error
+       ::u/message (str res)}
+      {::u/status :success})))
+
 (def fsm-main
-  {:init {:action-stack [{::u/fn ::ut/success}]
-          :success :start-init}
-   :start-init {:action-stack []}
+  {:init {:action-stack [::create-deployment
+                         ::create-service
+                         ::create-ingress
+                         {::u/fn ::ut/success}]
+          :success :initialized}
+   :initialized {:action-stack []}
    :error-state {}})
 
 (defn watch []
@@ -34,5 +58,4 @@
 
 (comment
   (watch)
-
-  )
+)

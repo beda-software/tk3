@@ -127,7 +127,6 @@
 
 (defn create [res]
   (let [u (resource-url res)]
-    ;; (println "POST " u)
     (-> @(http-client/post
           u
           {:body (json/generate-string (walk/stringify-keys res))
@@ -165,7 +164,6 @@
     (if-not (or (number? res) (= "Failure" (get res :status)))
       (let [diff (patch/diff (walk/stringify-keys res)
                              (walk/stringify-keys (*merge res nres)))]
-        ;; (println "PATCH" diff)
         (->
          @(http-client/patch
            (str (resource-url res (get-in res [:metadata :name])))

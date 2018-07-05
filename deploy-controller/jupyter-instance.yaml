@@ -5,8 +5,15 @@ metadata:
   name: jupyter-instance-box-1
   namespace: tk3
   labels:
-    service: star-wars
+    service: box-ab1900de
     system: tk3
+spec:
+  size: 1Gi
+  env:
+    AIDBOX_URL: https://box-1.aidbox.app
+
 config:
+  host: box-1.aidbox.app
+  base_url: /jupyter/
   jupyter_token: 123qwe
-  aidbox_url: https://box-1.aidbox.app
+

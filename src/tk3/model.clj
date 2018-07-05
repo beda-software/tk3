@@ -1,8 +1,5 @@
 (ns tk3.model
-  (:require [clojure.string :as str]
-            [tk3.naming :as naming]
-            [k8s.core :as k8s]
-            [unifn.core :as u]))
+  (:require [tk3.naming :as naming]))
 
 (def instance-definition
   {:apiVersion "apiextensions.k8s.io/v1beta1"
@@ -20,21 +17,9 @@
 (defn inherited-labels [x]
   (or (get-in x [:metadata :labels]) {}))
 
-(defn instance-spec [cluster color role]
-  {:kind naming/instance-resource-kind
-   :apiVersion naming/api
-   :metadata {:name (naming/instance-name cluster color)
-              :namespace (inherited-namespace cluster)
-              :labels (merge (naming/cluster-labels cluster)
-                             (naming/instance-labels role color))}
-   :spec (merge (:spec cluster)
-                {:pg-cluster (naming/resource-name cluster)
-                 :role role})
-   :config (:config cluster)})
-
 (def default-volume-annotiations {"volume.beta.kubernetes.io/storage-class" "standard"})
 
-(defn volume-spec
+(defn volume
   [{nm :name
     labels :labels
     ns :namespace
@@ -49,115 +34,75 @@
    :spec {:accessModes ["ReadWriteOnce"]
           :resources {:requests {:storage size}}}})
 
-(defn instance-data-volume-spec [inst-spec]
-  (volume-spec
-   {:name (naming/data-volume-name inst-spec)
-    :labels (merge (inherited-labels inst-spec) {:type "data"})
-    :namespace (inherited-namespace inst-spec)
-    :annotations {"volume.beta.kubernetes.io/storage-class" (get-in inst-spec [:spec :storageClass] "standard")}
-    :storage (get-in inst-spec [:spec :size])}))
+(defn instance-data-volume [inst]
+  (volume
+   {:name (naming/data-volume-name inst)
+    :labels (merge (inherited-labels inst) {:type "data"})
+    :namespace (inherited-namespace inst)
+    :annotations {"volume.beta.kubernetes.io/storage-class" (get-in inst [:spec :storageClass] "standard")}
+    :storage (get-in inst [:spec :size])}))
 
-(defn config-map [cluster]
-  {:kind "ConfigMap"
-   :apiVersion "v1"
-   :metadata {:name (naming/config-map-name (get-in cluster [:metadata :name]))
-              :labels (inherited-labels cluster)
-              :namespace (inherited-namespace cluster)}
-   :data {}})
-
-(defn rand-str [len]
-  (apply str (take len (repeatedly #(char (+ (rand 26) 65))))))
-
-(defn secret [cluster & [pass]]
-  {:kind "Secret"
-   :apiVersion "v1"
-   :type "Opaque"
-   :metadata {:name (naming/secret-name (get-in cluster [:metadata :name]))
-              :labels (inherited-labels cluster)
-              :namespace (inherited-namespace cluster)}
-   :data {:username (k8s/base64-encode "postgres")
-          :password (k8s/base64-encode (or pass (rand-str 10)))}})
-
-(defn volumes [inst-spec]
-  [(let [nm (naming/data-volume-name inst-spec)]
+(defn pod-volumes [inst]
+  [(let [nm (naming/data-volume-name inst)]
      {:name nm :persistentVolumeClaim {:claimName nm}})])
 
-(defn volume-mounts [inst-spec]
-  [{:name (naming/data-volume-name inst-spec)
+(defn container-volume-mounts [inst]
+  [{:name (naming/data-volume-name inst)
     :mountPath naming/data-path
-    :subPath "pgdata"}])
+    :subPath "data"}])
 
-(defn run-jupyter-command []
-  ["jupyter"
-   "notebook"
-   "-x"
-   (str/join " && "
-             [(format "chown postgres -R %s" naming/data-path)
-              (format "chown postgres -R %s" naming/wals-path)
-              (format "su -m postgres -c 'bash %s/initscript'" naming/config-path)])])
-
-(defn jupyter-pod [inst-spec opts]
+(defn jupyter-pod [inst]
   {:kind "Pod"
    :apiVersion "v1"
-   :metadata {:name (:name opts)
-              :namespace (inherited-namespace inst-spec)
-              :labels (inherited-labels inst-spec)}
-   :spec {:restartPolicy (or (:restartPolicy opts) "Always")
-          :volumes (volumes inst-spec)
+   :metadata {:namespace (inherited-namespace inst)
+              :labels (merge
+                       (inherited-labels inst)
+                       {:service (naming/resource-name inst)})}
+   :spec {:restartPolicy "Always"
+          ;; :volumes (pod-volumes inst)
           :containers
-          [{:name "pg"
-            :image (get-in inst-spec [:spec :image])
-            :ports [{:containerPort 5432}]
-            :imagePullPolicy :Always
-            :env
-            [{:name "PGUSER" :value "postgres"}
-             {:name "PGPASSWORD" :valueFrom {:secretKeyRef
-                                             {:name (naming/secret-name (get-in inst-spec [:spec :pg-cluster]))
-                                              :key "password"}}}]
-            :command (:command opts)
-            :volumeMounts (volume-mounts inst-spec)}]}})
+          [(merge
+            (:spec inst)
+            {:name "jupyter"
+             :image "jupyter/base-notebook:latest"
+             :ports [{:containerPort 8888}]
+             :imagePullPolicy :Always
+             :args ["jupyter"
+                    "notebook"
+                    (str "--NotebookApp.base_url=" (get-in inst [:config :base_url]))
+                    (str "--NotebookApp.token=" (get-in inst [:config :token]))]
+             ;; :volumeMounts (container-volume-mounts inst)
+             })]}})
 
-(defn init-master-pod [inst-spec]
-  (db-pod
-   (assoc-in inst-spec [:metadata :labels :type] "init")
-   {:name (str (get-in inst-spec [:metadata :name]) "-init-master")
-    :restartPolicy "Never"
-    :command (initdb-command)}))
-
-(defn postgres-pod [inst-spec opts]
-  (db-pod
-   (assoc-in inst-spec [:metadata :labels :type] "instance")
-   (merge opts {:command ["su" "-m" "postgres" "-c"
-                          (format "postgres --config-file=%1$s/postgresql.conf --hba-file=%1$s/pg_hba.conf"
-                                  naming/config-path)]})))
-
-(defn postgres-deployment [inst-spec]
-  (let [pod (-> (postgres-pod inst-spec
-                              {:name (str "tk3-" (get-in inst-spec [:spec :pg-cluster])
-                                          "-" (get-in inst-spec [:metadata :labels :color]))})
-                (update-in [:spec :containers]
-                           conj (merge
-                                 {:image "healthsamurai/wal-export:latest"}
-                                 (get-in inst-spec [:spec :wal-export])
-                                 {:name "pg-wal-export"
-                                  :imagePullPolicy :Always
-                                  :env [{:name "WAL_DIR" :value naming/wals-path}]
-                                  :volumeMounts (volume-mounts inst-spec)})))]
+(defn jupyter-deployment [inst]
+  (let [pod (jupyter-pod inst)]
     {:apiVersion "apps/v1beta1"
      :kind "Deployment"
-     :metadata (:metadata pod)
+     :metadata {:name (naming/deployment-name inst)
+                :namespace (inherited-namespace inst)
+                :labels (inherited-labels inst)}
      :spec {:replicas 1
-            :template (update pod :metadata dissoc :name)}}))
+            :template pod}}))
 
-(defn master-service [inst-spec]
-  (let [cluster-name (get-in inst-spec [:spec :pg-cluster])]
-    {:apiVersion "v1"
-     :kind "Service"
-     :metadata {:name (naming/service-name cluster-name)
-                :namespace (inherited-namespace inst-spec)
-                :labels (inherited-labels inst-spec)}
-     :spec {:selector (naming/master-service-selector cluster-name)
-            :type "ClusterIP"
-            :ports [{:protocol "TCP"
-                     :port 5432
-                     :targetPort 5432}]}}))
+(defn jupyter-service [inst]
+  {:apiVersion "v1"
+   :kind "Service"
+   :metadata {:name (naming/service-name inst)
+              :namespace (inherited-namespace inst)
+              :labels (inherited-labels inst)}
+   :spec {:selector {:service (naming/resource-name inst)}
+          :type "ClusterIP"
+          :ports [{:protocol "TCP"
+                   :port 8888
+                   :targetPort 8888}]}})
+
+(defn jupyter-ingress [inst]
+  {:apiVersion "extensions/v1beta1"
+   :kind "Ingress"
+   :metadata {:name (naming/ingress-name inst)
+              :namespace (inherited-namespace inst)
+              :labels (inherited-labels inst)}
+   :spec {:rules [{:host (get-in inst [:config :host])
+                   :http {:paths [{:path (get-in inst [:config :base_url])
+                                   :backend {:serviceName (naming/service-name inst)
+                                             :servicePort 8888}}]}}]}})
