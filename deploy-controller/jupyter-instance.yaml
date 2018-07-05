@@ -1,0 +1,12 @@
+kind: JupyterInstance
+ns: tk3
+apiVersion: tk3.io/v1
+metadata:
+  name: jupyter-instance-box-1
+  namespace: tk3
+  labels:
+    service: star-wars
+    system: tk3
+config:
+  jupyter_token: 123qwe
+  aidbox_url: https://box-1.aidbox.app

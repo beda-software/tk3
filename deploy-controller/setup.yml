@@ -1,0 +1,31 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: tk3-controller
+  namespace: tk3-controller
+  labels:
+    app: tk3-controller
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tk3-controller
+  template:
+    metadata:
+      labels:
+        app: tk3-controller
+    spec:
+      containers:
+      - name: tk3-controller
+        image: beda-software/tk3:latest
+        env:
+        - name: KUBE_TOKEN
+          valueFrom:
+            secretKeyRef:
+              key: KUBE_TOKEN
+              name: tk3-controller-secrets
+        - name: KUBE_URL
+          valueFrom:
+            secretKeyRef:
+              key: KUBE_URL
+              name: tk3-controller-secrets
