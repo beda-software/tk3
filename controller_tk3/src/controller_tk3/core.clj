@@ -1,7 +1,7 @@
-(ns tk3.core
+(ns controller-tk3.core
   (:require [k8s.core :as k8s]
-            [tk3.model :as m]
-            [tk3.instance :as instance])
+            [controller-tk3.model :as m]
+            [controller-tk3.instance :as instance])
   (:gen-class))
 
 (defn watch []

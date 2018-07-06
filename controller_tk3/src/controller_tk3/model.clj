@@ -1,5 +1,5 @@
-(ns tk3.model
-  (:require [tk3.naming :as naming]))
+(ns controller-tk3.model
+  (:require [controller-tk3.naming :as naming]))
 
 (def instance-definition
   {:apiVersion "apiextensions.k8s.io/v1beta1"

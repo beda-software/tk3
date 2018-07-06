@@ -1,6 +1,6 @@
-(ns tk3.scratch
+(ns controller-tk3.scratch
   (:require [k8s.core :as k8s]
-            [tk3.model :as model]))
+            [controller-tk3.model :as model]))
 
 (defn update-status [inst status]
   (k8s/patch

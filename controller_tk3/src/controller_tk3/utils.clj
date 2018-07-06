@@ -1,6 +1,6 @@
-(ns tk3.utils
+(ns controller-tk3.utils
   (:require [k8s.core :as k8s]
-            [tk3.naming :as naming]
+            [controller-tk3.naming :as naming]
             [clojure.string :as str]
             [unifn.core :as u]))
 

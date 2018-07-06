@@ -1,10 +1,10 @@
-(ns tk3.instance
+(ns controller-tk3.instance
   (:require [k8s.core :as k8s]
-            [tk3.naming :as naming]
-            [tk3.model :as model]
+            [controller-tk3.naming :as naming]
+            [controller-tk3.model :as model]
             [cheshire.core :as json]
-            [tk3.utils :as ut]
-            [tk3.fsm :as fsm]
+            [controller-tk3.utils :as ut]
+            [controller-tk3.fsm :as fsm]
             [unifn.core :as u]))
 
 (defn pvc? [res]

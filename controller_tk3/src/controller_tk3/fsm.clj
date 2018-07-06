@@ -1,7 +1,7 @@
-(ns tk3.fsm
+(ns controller-tk3.fsm
   (:require [unifn.core :as u]
             [k8s.core :as k8s]
-            [tk3.utils :as ut]))
+            [controller-tk3.utils :as ut]))
 
 (defn update-status [resource state-key status]
   (k8s/patch

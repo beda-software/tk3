@@ -1,4 +1,5 @@
-/target
+/controller_tk3/target
+/webapp_tk3/target
 /classes
 /checkouts
 pom.xml
@@ -11,5 +12,6 @@ pom.xml.asc
 .hg/
 .env
 deploy-controller/_secret.yml
+*/.idea/*
 .idea/*
 *.iml

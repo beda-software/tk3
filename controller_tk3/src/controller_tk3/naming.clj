@@ -1,6 +1,6 @@
-(ns tk3.naming
+(ns controller-tk3.naming
   (:require [clojure.string :as str]
-            #_[tk3.utils :as ut]))
+            #_[controller-tk3.utils :as ut]))
 
 ;; The system is very sensitive to naming changes
 ;; be carefull and backward compatible here

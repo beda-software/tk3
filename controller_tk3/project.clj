@@ -1,6 +1,6 @@
-(defproject tk3 "0.0.1-SNAPSHOT"
-  :description "tk in k8s"
-  :url "http://github.com/beda-software/tk3"
+(defproject controller_tk3 "0.0.1-SNAPSHOT"
+  :description "tk controller in k8s"
+  :url "http://github.com/beda-software/tk3/controller_tk3"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.9.0-alpha16"]
@@ -28,8 +28,8 @@
                  [garden "1.3.2"]
                  [stylefruits/gniazdo "1.0.1"]
                  [matcho "0.1.0-RC5"]]
-  :uberjar-name "tk3.jar"
-  :main tk3.core
+  :uberjar-name "controller_tk3.jar"
+  :main controller-tk3.core
   :profiles {:dev {:source-paths  ["test" "src"]
                    :plugins [[lein-dotenv "RELEASE"]]}
              :uberjar {:aot :all :omit-source true}})
