@@ -16,11 +16,13 @@
       res
       (k8s/patch spec))))
 
-(defn find-resource [kind ns res-name]
-  (k8s/find {:kind kind
-             :apiVersion "v1"
-             :metadata {:name res-name
-                        :namespace ns}}))
+(defmethod u/*fn ::init-instance-volumes [{inst :resource}]
+  (let [data-v (pvc-patch (model/instance-data-volume inst))]
+    (if (pvc? data-v)
+      {::u/status :success
+       :status-data {:volumes [data-v]}}
+      {::u/status :error
+       ::u/message (str "Instance volumes request error: " data-v)})))
 
 (defmethod u/*fn ::create-deployment [{inst :resource}]
   (let [res (k8s/patch (model/jupyter-deployment inst))]
@@ -43,13 +45,33 @@
        ::u/message (str res)}
       {::u/status :success})))
 
+(defmethod u/*fn ::volumes-ready? [{inst :resource}]
+  (let [vols (get-in inst [:status :volumes])
+        ready? (reduce
+                (fn [acc v]
+                  (let [pvc (k8s/find
+                             (assoc v
+                                    :kind "PersistentVolumeClaim"
+                                    :apiVersion "v1"))]
+                    (and acc (= "Bound" (get-in pvc [:status :phase])))))
+                true vols)]
+    (when-not ready?
+      {::u/status :stop})))
+
 (def fsm-main
-  {:init {:action-stack [::create-deployment
-                         ::create-service
-                         ::create-ingress
-                         {::u/fn ::ut/success}]
-          :success :initialized}
-   :initialized {:action-stack []}
+  {:init {:action-stack [::init-instance-volumes]
+          :success :waiting-volumes
+          :error :error-state}
+   :waiting-volumes {:action-stack [::volumes-ready?
+                                    {::u/fn ::ut/success}]
+                     :success :volumes-are-ready
+                     :error :error-state}
+   :volumes-are-ready {:action-stack [::create-deployment
+                                      ::create-service
+                                      ;;::create-ingress
+                                      {::u/fn ::ut/success}]
+                   :success :initialized}
+   :initialized {}
    :error-state {}})
 
 (defn watch []
@@ -58,4 +80,4 @@
 
 (comment
   (watch)
-)
+  )

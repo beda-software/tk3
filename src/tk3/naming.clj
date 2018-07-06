@@ -13,7 +13,8 @@
 (def instance-resource-kind "JupyterInstance")
 (def instance-resource-plural "jupyterinstances")
 
-(def data-path "/data")
+;; /home/jovyan is set in jupyter/base-notebook images
+(def data-path "/home/jovyan/work")
 
 (defn resource-name [x]
   (get-in x [:metadata :name]))

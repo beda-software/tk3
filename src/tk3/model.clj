@@ -32,6 +32,7 @@
               :namespace ns
               :annotations  (merge default-volume-annotiations anns)}
    :spec {:accessModes ["ReadWriteOnce"]
+          :storageClassName "standard"
           :resources {:requests {:storage size}}}})
 
 (defn instance-data-volume [inst]
@@ -42,7 +43,7 @@
     :annotations {"volume.beta.kubernetes.io/storage-class" (get-in inst [:spec :storageClass] "standard")}
     :storage (get-in inst [:spec :size])}))
 
-(defn pod-volumes [inst]
+(defn volumes [inst]
   [(let [nm (naming/data-volume-name inst)]
      {:name nm :persistentVolumeClaim {:claimName nm}})])
 
@@ -59,7 +60,7 @@
                        (inherited-labels inst)
                        {:service (naming/resource-name inst)})}
    :spec {:restartPolicy "Always"
-          ;; :volumes (pod-volumes inst)
+          :volumes (volumes inst)
           :containers
           [(merge
             ;; TODO: use whitelist for images
@@ -73,7 +74,7 @@
                     "notebook"
                     (str "--NotebookApp.base_url=" (get-in inst [:config :base_url]))
                     (str "--NotebookApp.token=" (get-in inst [:config :token]))]
-             ;; :volumeMounts (container-volume-mounts inst)
+             :volumeMounts (container-volume-mounts inst)
              })]}})
 
 (defn jupyter-deployment [inst]
