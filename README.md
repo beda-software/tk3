@@ -17,7 +17,7 @@ kubectl apply deplyment.yaml
 
 ## Development
 
-
+TODO: Grant restricted amount of permission to web app. Web app should be able to manage only JupyterInstance resources
 
 ## License
 

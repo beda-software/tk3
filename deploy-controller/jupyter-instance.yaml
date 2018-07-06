@@ -5,7 +5,6 @@ metadata:
   name: jupyter-instance-box-1
   namespace: tk3
   labels:
-    service: box-ab1900de
     system: tk3
 spec:
   size: 1Gi

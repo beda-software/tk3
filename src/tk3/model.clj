@@ -62,9 +62,11 @@
           ;; :volumes (pod-volumes inst)
           :containers
           [(merge
+            ;; TODO: use whitelist for images
+            ;; TODO: use "isolated namespace" to avoid network scanning
+            {:image "jupyter/base-notebook:latest"}
             (:spec inst)
             {:name "jupyter"
-             :image "jupyter/base-notebook:latest"
              :ports [{:containerPort 8888}]
              :imagePullPolicy :Always
              :args ["jupyter"
