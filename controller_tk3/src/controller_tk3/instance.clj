@@ -68,7 +68,7 @@
                      :error :error-state}
    :volumes-are-ready {:action-stack [::create-deployment
                                       ::create-service
-                                      ;;::create-ingress
+                                      ::create-ingress
                                       {::u/fn ::ut/success}]
                    :success :initialized}
    :initialized {}

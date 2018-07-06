@@ -32,7 +32,6 @@
               :namespace ns
               :annotations  (merge default-volume-annotiations anns)}
    :spec {:accessModes ["ReadWriteOnce"]
-          :storageClassName "standard"
           :resources {:requests {:storage size}}}})
 
 (defn instance-data-volume [inst]
