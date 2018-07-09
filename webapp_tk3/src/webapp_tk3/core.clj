@@ -5,11 +5,14 @@
    [route-map.core :as rm]
    [cheshire.core :as json]))
 
+(defn- jupyter-instance-name [aidbox-id]
+  (str "jupyter-instance-" aidbox-id))
+
 (defn- create-jupyter-instance-spec [{:keys [aidbox-url aidbox-id jupyter-token host]}]
   {:kind "JupyterInstance"
    :ns "tk3"
    :apiVersion "tk3.io/v1"
-   :metadata {:name (str "jupyter-instance-" aidbox-id)
+   :metadata {:name (jupyter-instance-name aidbox-id)
               :namespace "tk3"
               :labels {:system "tk3"}}
    :spec {:size "10Mi"
@@ -24,12 +27,25 @@
    :status status
    :headers {"Content-Type" "text/html"}})
 
+(defn- jupyter-instance-exists? [aidbox-id]
+  (let [instance (k8s/find {:kind "JupyterInstance"
+                            :ns "tk3"
+                            :apiVersion "tk3.io/v1"
+                            :id (jupyter-instance-name aidbox-id)})]
+    (= (:kind instance) "JupyterInstance")))
+
 (defn- init-jupyter-instance [{data :data :as req}]
-  (if (every? #(contains? data %) [:aidbox-url :aidbox-id :jupyter-token :host])
+  (cond
+    (not (every? #(contains? data %) [:aidbox-url :aidbox-id :jupyter-token :host]))
+    (make-response 400 "Invalid request (ensure aidbox-url, aidbox-id, jupyter-token, host are set)")
+
+    (jupyter-instance-exists? (:aidbox-id data))
+    (make-response 400 (str "JupyterInstance with id " (:aidbox-id data) " already exists"))
+
+    :else
     (do
       (k8s/patch (create-jupyter-instance-spec data))
-      (make-response 200 "Jupyter instance was created"))
-    (make-response 400 "Invalid request (ensure aidbox-url, jupyter-token, host are set)")))
+      (make-response 200 "Jupyter instance was created"))))
 
 (def routes
   {"init-jupyter-instance" {:POST init-jupyter-instance}})
