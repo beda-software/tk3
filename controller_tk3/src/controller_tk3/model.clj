@@ -71,8 +71,8 @@
              :imagePullPolicy :Always
              :args ["jupyter"
                     "notebook"
-                    (str "--NotebookApp.base_url=" (get-in inst [:config :base_url]))
-                    (str "--NotebookApp.token=" (get-in inst [:config :token]))]
+                    (str "--NotebookApp.base_url='" (get-in inst [:config :base_url]) "'")
+                    (str "--NotebookApp.token='" (get-in inst [:config :token]) "'")]
              :volumeMounts (container-volume-mounts inst)
              })]}})
 
