@@ -1,0 +1,36 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: tk3-webapp
+  namespace: tk3-webapp
+  labels:
+    app: tk3-webapp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tk3-webapp
+  template:
+    metadata:
+      labels:
+        app: tk3-webapp
+    spec:
+      containers:
+      - name: tk3-webapp
+        image: bedasoftware/webapp-tk3:latest
+        env:
+        - name: KUBE_TOKEN
+          valueFrom:
+            secretKeyRef:
+              key: KUBE_TOKEN
+              name: tk3-webapp-secrets
+        - name: KUBE_URL
+          valueFrom:
+            secretKeyRef:
+              key: KUBE_URL
+              name: tk3-webapp-secrets
+        - name: WEBAPP_ACCESS_TOKEN
+          valueFrom:
+            secretKeyRef:
+              key: WEBAPP_ACCESS_TOKEN
+              name: tk3-webapp-secrets

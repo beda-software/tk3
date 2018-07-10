@@ -19,4 +19,6 @@
   :target-path "target/%s"
   :profiles {:dev {:source-paths  ["test" "src" "../common_tk3/src"]
                    :plugins [[lein-dotenv "RELEASE"]]}
-             :uberjar {:aot :all :omit-source true}})
+             :uberjar {:source-paths  ["test" "src"  "../common_tk3/src"]
+                       :aot :all
+                       :omit-source true}})

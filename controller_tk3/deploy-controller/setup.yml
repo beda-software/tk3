@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
       - name: tk3-controller
-        image: beda-software/tk3:latest
+        image: bedasoftware/controller-tk3:latest
         env:
         - name: KUBE_TOKEN
           valueFrom:
