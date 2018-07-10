@@ -17,7 +17,14 @@ kubectl apply deplyment.yaml
 
 ## Development
 
-TODO: Integrate with aidbox
+TODO: Use json schema
+TODO: authorization
+TODO: deploy script for controller and webapp (store secrets and make deployment)
+TODO: use restricted token for controller
+
+AIDBOX:
+TODO: Integrate with aidbox (JupyterInstanceResource in aidbox)
+TODO: feedback by callback-url
 
 ## License
 

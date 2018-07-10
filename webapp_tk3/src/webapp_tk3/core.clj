@@ -8,7 +8,7 @@
 (defn- jupyter-instance-name [aidbox-id]
   (str "jupyter-instance-" aidbox-id))
 
-(defn- create-jupyter-instance-spec [{:keys [aidbox-url aidbox-id jupyter-token host]}]
+(defn- make-aidbox-jupyter-instance-spec [{:keys [aidbox-url aidbox-id aidbox-token jupyter-token host]}]
   {:kind "JupyterInstance"
    :ns "tk3"
    :apiVersion "tk3.io/v1"
@@ -17,7 +17,9 @@
               :labels {:system "tk3"}}
    :spec {:size "10Mi"
           :env [{:name "AIDBOX_URL"
-                 :value aidbox-url}]}
+                 :value aidbox-url}
+                {:name "AIDBOX_TOKEN"
+                 :value aidbox-token}]}
    :config {:token jupyter-token
             :base_url "/jupyter/"
             :host host}})
@@ -27,28 +29,25 @@
    :status status
    :headers {"Content-Type" "text/html"}})
 
-(defn- jupyter-instance-exists? [aidbox-id]
+(defn- aidbox-jupyter-instance-exists? [aidbox-id]
   (let [instance (k8s/find {:kind "JupyterInstance"
                             :ns "tk3"
                             :apiVersion "tk3.io/v1"
                             :id (jupyter-instance-name aidbox-id)})]
     (= (:kind instance) "JupyterInstance")))
 
-(defn- init-jupyter-instance [{data :data :as req}]
+(defn- init-aidbox-jupyter-instance [{data :data :as req}]
   (cond
-    (not (every? #(contains? data %) [:aidbox-url :aidbox-id :jupyter-token :host]))
-    (make-response 400 "Invalid request (ensure aidbox-url, aidbox-id, jupyter-token, host are set)")
+    (not (every? #(contains? data %) [:aidbox-url :aidbox-token :aidbox-id :jupyter-token :host]))
+    (make-response 400 "Invalid request (ensure aidbox-url, aidbox-token, aidbox-id, jupyter-token, host are set)")
 
-    (jupyter-instance-exists? (:aidbox-id data))
+    (aidbox-jupyter-instance-exists? (:aidbox-id data))
     (make-response 400 (str "JupyterInstance with id " (:aidbox-id data) " already exists"))
 
     :else
     (do
-      (k8s/patch (create-jupyter-instance-spec data))
+      (k8s/patch (make-aidbox-jupyter-instance-spec data))
       (make-response 200 "Jupyter instance was created"))))
-
-(def routes
-  {"init-jupyter-instance" {:POST init-jupyter-instance}})
 
 (defn- parse-json-body [h]
   (fn [{body :body :as req}]
@@ -71,6 +70,9 @@
 (defn handler [{rm :route-match :as req}]
   (let [handler-fn (:match rm)]
     (handler-fn req)))
+
+(def routes
+  {"init-aidbox-jupyter-instance" {:POST init-aidbox-jupyter-instance}})
 
 (def app
   (-> handler
