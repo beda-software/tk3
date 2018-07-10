@@ -18,7 +18,6 @@ kubectl apply deplyment.yaml
 ## Development
 
 TODO: Use json schema
-TODO: authorization
 TODO: deploy script for controller and webapp (store secrets and make deployment)
 TODO: use restricted token for controller
 

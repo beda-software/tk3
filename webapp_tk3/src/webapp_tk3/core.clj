@@ -62,6 +62,13 @@
       (h req)
       (make-response 400 "Unsupported content-type, use application/json"))))
 
+(defn- check-access-token [h]
+  (fn [{headers :headers :as req}]
+    (let [access-token (System/getenv "WEBAPP_ACCESS_TOKEN")]
+     (if (= (get headers "authorization") (str "Token " access-token))
+       (h req)
+       (make-response 403 "Invalid access token passed in Authorization header")))))
+
 (defn wrap-not-found [h]
   (fn [{rm :route-match :as req}]
     (if rm (h req)
@@ -79,7 +86,8 @@
       (parse-json-body)
       (check-content-type)
       (wrap-not-found)
-      (rm/wrap-route-map routes)))
+      (rm/wrap-route-map routes)
+      (check-access-token)))
 
 (def server (atom nil))
 
