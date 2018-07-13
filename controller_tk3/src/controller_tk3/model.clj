@@ -71,7 +71,6 @@
              :imagePullPolicy :Always
              :args ["jupyter"
                     "notebook"
-                    (str "--NotebookApp.base_url='" (get-in inst [:config :base_url]) "'")
                     (str "--NotebookApp.token='" (get-in inst [:config :token]) "'")]
              :volumeMounts (container-volume-mounts inst)
              })]}})
@@ -105,6 +104,6 @@
               :namespace (inherited-namespace inst)
               :labels (inherited-labels inst)}
    :spec {:rules [{:host (get-in inst [:config :host])
-                   :http {:paths [{:path (get-in inst [:config :base_url])
+                   :http {:paths [{:path "/"
                                    :backend {:serviceName (naming/service-name inst)
                                              :servicePort 8888}}]}}]}})

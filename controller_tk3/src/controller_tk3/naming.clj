@@ -16,6 +16,8 @@
 ;; /home/jovyan is set in jupyter/base-notebook images
 (def data-path "/home/jovyan/work")
 
+(def namespace "tk3")
+
 (defn resource-name [x]
   (get-in x [:metadata :name]))
 

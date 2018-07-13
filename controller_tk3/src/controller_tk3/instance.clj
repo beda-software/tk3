@@ -5,7 +5,8 @@
             [cheshire.core :as json]
             [controller-tk3.utils :as ut]
             [controller-tk3.fsm :as fsm]
-            [unifn.core :as u]))
+            [unifn.core :as u]
+            [controller-tk3.aidbox :as aidbox]))
 
 (defn pvc? [res]
   (and (map? res) (= (:kind res) "PersistentVolumeClaim")))
@@ -19,8 +20,7 @@
 (defmethod u/*fn ::init-instance-volumes [{inst :resource}]
   (let [data-v (pvc-patch (model/instance-data-volume inst))]
     (if (pvc? data-v)
-      {::u/status :success
-       :status-data {:volumes [data-v]}}
+      {::u/status :success}
       {::u/status :error
        ::u/message (str "Instance volumes request error: " data-v)})))
 
@@ -46,37 +46,53 @@
       {::u/status :success})))
 
 (defmethod u/*fn ::volumes-ready? [{inst :resource}]
-  (let [vols (get-in inst [:status :volumes])
+  (let [vols [(naming/data-volume-name inst)]
         ready? (reduce
                 (fn [acc v]
                   (let [pvc (k8s/find
-                             (assoc v
-                                    :kind "PersistentVolumeClaim"
-                                    :apiVersion "v1"))]
+                             {:kind "PersistentVolumeClaim"
+                              :apiVersion "v1"
+                              :id v
+                              :ns naming/namespace})]
                     (and acc (= "Bound" (get-in pvc [:status :phase])))))
                 true vols)]
     (when-not ready?
       {::u/status :stop})))
 
 (def fsm-main
-  {:init {:action-stack [::init-instance-volumes]
-          :success :waiting-volumes
-          :error :error-state}
+  {:initializing {:action-stack [::init-instance-volumes]
+                  :success :waiting-volumes
+                  :error :failed}
    :waiting-volumes {:action-stack [::volumes-ready?
                                     {::u/fn ::ut/success}]
                      :success :volumes-are-ready
-                     :error :error-state}
+                     :error :failed}
    :volumes-are-ready {:action-stack [::create-deployment
                                       ::create-service
                                       ::create-ingress
                                       {::u/fn ::ut/success}]
-                   :success :initialized}
-   :initialized {}
-   :error-state {}})
+                       :success :ready}
+   :ready {}
+   :failed {}})
+
+(defn- make-resource
+  [{:keys [boxCredentials databaseCredentials jupyterCredentials id status]}]
+  {:id id
+   :status status
+   :metadata {:labels {:system "tk3"}
+              :namespace naming/namespace
+              :name (str "jupyterinstance-" id)}
+   :spec {:size "10Mi"
+          :env [{:name "BOX_HOST"
+                 :value (:host boxCredentials)}
+                {:name "BOX_TOKEN"
+                 :value (:token boxCredentials)}]}
+   :config {:token (:token jupyterCredentials)
+            :host (:host jupyterCredentials)}})
 
 (defn watch []
-  (doseq [inst (:items (k8s/query {:kind naming/instance-resource-kind :apiVersion naming/api}))]
-    (fsm/process-state fsm-main inst)))
+  (doseq [inst (aidbox/get-updated-instances)]
+    (fsm/process-state fsm-main (make-resource inst))))
 
 (comment
   (watch)
