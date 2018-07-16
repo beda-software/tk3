@@ -9,10 +9,6 @@
 (def api-version "v1")
 (def api (str api-group "/" api-version))
 
-(def instance-resource-name (str "jupyterinstances." api-group))
-(def instance-resource-kind "JupyterInstance")
-(def instance-resource-plural "jupyterinstances")
-
 ;; /home/jovyan is set in jupyter/base-notebook images
 (def data-path "/home/jovyan/work")
 

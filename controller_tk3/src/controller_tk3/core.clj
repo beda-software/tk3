@@ -16,7 +16,6 @@
 
 (defn start []
   (stop)
-  (k8s/patch m/instance-definition)
   (let [thr (Thread.
              (fn []
                (println "Start")

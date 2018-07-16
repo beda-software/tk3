@@ -1,16 +1,6 @@
 (ns controller-tk3.model
   (:require [controller-tk3.naming :as naming]))
 
-(def instance-definition
-  {:apiVersion "apiextensions.k8s.io/v1beta1"
-   :kind "CustomResourceDefinition"
-   :metadata {:name naming/instance-resource-name}
-   :spec {:group naming/api-group
-          :version naming/api-version
-          :names {:kind naming/instance-resource-kind
-                  :plural naming/instance-resource-plural}
-          :scope "Namespaced"}})
-
 (defn inherited-namespace [x]
   (or (get-in x [:metadata :namespace]) "default"))
 
