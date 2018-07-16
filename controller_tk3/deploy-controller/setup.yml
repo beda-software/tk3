@@ -29,3 +29,13 @@ spec:
             secretKeyRef:
               key: KUBE_URL
               name: tk3-controller-secrets
+        - name: AIDBOX_URL
+          valueFrom:
+            secretKeyRef:
+              key: AIDBOX_URL
+              name: tk3-controller-secrets
+        - name: AIDBOX_TOKEN
+          valueFrom:
+            secretKeyRef:
+              key: AIDBOX_TOKEN
+              name: tk3-controller-secrets
