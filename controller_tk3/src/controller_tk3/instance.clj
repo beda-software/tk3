@@ -76,10 +76,11 @@
    :failed {}})
 
 (defn- make-resource
-  [{:keys [boxCredentials databaseCredentials jupyterCredentials id status]}]
+  [{:keys [boxCredentials databaseCredentials jupyterCredentials id status meta]}]
   {:id id
    :status status
-   :metadata {:labels {:system "tk3"}
+   :metadata {:annotations {:lastUpdated (:lastUpdated meta)}
+              :labels {:system "controller"}
               :namespace naming/namespace
               :name (str "jupyterinstance-" id)}
    :spec {:size "10Mi"
@@ -91,9 +92,19 @@
             :host (:host jupyterCredentials)}})
 
 (defn watch []
-  (doseq [inst (aidbox/get-updated-instances)]
-    (fsm/process-state fsm-main (make-resource inst))))
+  (let [max-last-updated (->> (k8s/query {:apiVersion "apps/v1beta1"
+                                          :kind "Deployment"
+                                          :ns naming/namespace}
+                                         {:labelSelector "system=controller"})
+                              :items
+                              (map #(get-in % [:metadata :annotations :lastUpdated]))
+                              sort
+                              last)]
+    (doseq [inst (aidbox/get-updated-instances max-last-updated)]
+      (condp (= (:state inst))
+        :deleted nil
+
+        (fsm/process-state fsm-main (make-resource inst))))))
 
 (comment
-  (watch)
-  )
+ (watch))

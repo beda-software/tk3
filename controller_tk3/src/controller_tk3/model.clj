@@ -79,7 +79,8 @@
   (let [pod (jupyter-pod inst)]
     {:apiVersion "apps/v1beta1"
      :kind "Deployment"
-     :metadata {:name (naming/deployment-name inst)
+     :metadata {:annotations (get-in inst [:metadata :annotations])
+                :name (naming/deployment-name inst)
                 :namespace (inherited-namespace inst)
                 :labels (inherited-labels inst)}
      :spec {:replicas 1
