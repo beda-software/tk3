@@ -17,13 +17,7 @@
 (defn resource-name [x]
   (get-in x [:metadata :name]))
 
-(defn secret-name [inst]
-  (resource-name inst))
-
 (defn service-name [inst]
-  (resource-name inst))
-
-(defn ingress-name [inst]
   (resource-name inst))
 
 (defn deployment-name [inst]
