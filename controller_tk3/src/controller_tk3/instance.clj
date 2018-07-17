@@ -41,7 +41,7 @@
       {::u/status :success})))
 
 (defn- make-resource
-  [{:keys [id boxCredentials databaseCredentials jupyterCredentials box status meta]}]
+  [{:keys [id boxCredentials databaseCredentials jupyterCredentials box status]}]
   {:id id
    :status status
    :metadata {:annotations {:jupyter-instance-id id}
@@ -58,7 +58,7 @@
 (defn watch []
   (doseq [inst (aidbox/get-updated-instances @last-updated)]
     (let [inst-last-updated (get-in inst [:meta :lastUpdated])]
-      (when (or (not @last-updated) (< @last-updated inst-last-updated))
+      (when (or (not @last-updated) (< (compare @last-updated inst-last-updated) 0))
         (reset! last-updated inst-last-updated))
       (swap! instance-status-cache assoc (:id inst) (:status inst)))
     (condp = (:state inst)
@@ -82,7 +82,7 @@
     (doseq [deployment deployments]
       (let [instance-id (get-in deployment [:metadata :annotations :jupyter-instance-id])
             prev-status (get @instance-status-cache instance-id)
-            replicas-count (get-in deployment [:status :readyReplicas])
+            replicas-count (or (get-in deployment [:status :readyReplicas]) 0)
             curr-status (cond
                           (and (= prev-status "initializing") (>= replicas-count 1))
                           "ready"
@@ -99,7 +99,8 @@
 
 (comment
   (watch)
+
+  (reset! last-updated nil)
   )
 
 ;; TODO: use one unnamed token
-;; TODO: create custom nginx config
