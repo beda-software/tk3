@@ -1,0 +1,56 @@
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: nginx-tk3
+  namespace: tk3
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx-tk3
+  template:
+    metadata:
+      labels:
+        app: nginx-tk3
+    spec:
+      containers:
+        - name: nginx-tk3
+          image: ruscoder/nginx-tk3:0.9
+          imagePullPolicy: Always
+          ports:
+          - name: http
+            containerPort: 80
+          env:
+          - name: AIDBOX_BASE_DOMAIN 
+            value: 127.0.0.1.xip.io
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: nginx-tk3
+  namespace: tk3
+  labels:
+    app: nginx-tk3
+spec:
+  selector:
+    app: nginx-tk3
+  ports:
+  - name: http
+    port: 80
+    targetPort: http
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: nginx-tk3
+  namespace: tk3
+spec:
+  rules:
+  - host: "*.jupyter.127.0.0.1.xip.io"
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: nginx-tk3
+          servicePort: 80
