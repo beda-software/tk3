@@ -1,0 +1,102 @@
+worker_processes  2;
+pid /run/nginx.pid;
+
+events {
+    multi_accept        on;
+    worker_connections  16384;
+    use                 epoll;
+}
+
+http {
+    include       /etc/nginx/mime.types;
+    default_type  application/octet-stream;
+
+    resolver 10.96.0.10 valid=30s; 
+    
+    # Retain the default nginx handling of requests without a "Connection" header
+    map $http_upgrade $connection_upgrade {
+        default          upgrade;
+        ''               close;
+    }
+
+    map $http_x_forwarded_for $the_real_ip {
+
+        default          $remote_addr;
+
+    }
+
+    # trust http_x_forwarded_proto headers correctly indicate ssl offloading
+    map $http_x_forwarded_proto $pass_access_scheme {
+        default          $http_x_forwarded_proto;
+        ''               $scheme;
+    }
+
+    # validate $pass_access_scheme and $scheme are http to force a redirect
+    map "$scheme:$pass_access_scheme" $redirect_to_https {
+        default          0;
+        "http:http"      1;
+        "https:http"     1;
+    }
+
+    map $http_x_forwarded_port $pass_server_port {
+        default           $http_x_forwarded_port;
+        ''                $server_port;
+    }
+
+    map $pass_server_port $pass_port {
+        443              443;
+        default          $pass_server_port;
+    }
+
+    server {
+        server_name ~^(?<box>[^.]+)\.jupyter\.${AIDBOX_BASE_DOMAIN}$;
+        location / {
+            proxy_pass http://jupyterinstance-$box.tk3.svc.cluster.local:8888;
+            proxy_set_header Host                   $host;
+
+            # Pass the extracted client certificate to the backend
+
+            proxy_set_header ssl-client-cert        "";
+            proxy_set_header ssl-client-verify      "";
+            proxy_set_header ssl-client-dn          "";
+
+            # Allow websocket connections
+            proxy_set_header                        Upgrade           $http_upgrade;
+            proxy_set_header                        Connection        $connection_upgrade;
+
+            proxy_set_header X-Real-IP              $the_real_ip;
+
+            proxy_set_header X-Forwarded-For        $the_real_ip;
+
+            proxy_set_header X-Forwarded-Host       $host;
+            proxy_set_header X-Forwarded-Port       $pass_port;
+            proxy_set_header X-Forwarded-Proto      $pass_access_scheme;
+            proxy_set_header X-Original-URI         $request_uri;
+            proxy_set_header X-Scheme               $pass_access_scheme;
+
+            # Pass the original X-Forwarded-For
+            proxy_set_header X-Original-Forwarded-For $http_x_forwarded_for;
+
+            # mitigate HTTPoxy Vulnerability
+            # https://www.nginx.com/blog/mitigating-the-httpoxy-vulnerability-with-nginx/
+            proxy_set_header Proxy                  "";
+
+            # Custom headers to proxied server
+
+            proxy_connect_timeout                   5s;
+            proxy_send_timeout                      60s;
+            proxy_read_timeout                      60s;
+
+            proxy_buffering                         off;
+            proxy_buffer_size                       "4k";
+            proxy_buffers                           4 "4k";
+            proxy_request_buffering                 "on";
+
+            proxy_http_version                      1.1;
+
+            proxy_cookie_domain                     off;
+            proxy_cookie_path                       off;
+
+        }
+    }
+}

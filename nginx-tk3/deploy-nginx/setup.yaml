@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: nginx-tk3
-          image: ruscoder/nginx-tk3:0.9
+          image: bedasoftware/nginx-tk3:latest 
           imagePullPolicy: Always
           ports:
           - name: http
