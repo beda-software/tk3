@@ -4,7 +4,7 @@
    [clojure.string :as str]
    [org.httpkit.client :as http-client]))
 
-(def aidbox-url (or "http://127.0.0.1.xip.io:8080"))
+(def aidbox-url (or (System/getenv "AIDBOX_URL") "http://127.0.0.1.xip.io:8080"))
 
 (def default-headers
   (if-let [token (System/getenv "AIDBOX_TOKEN")]

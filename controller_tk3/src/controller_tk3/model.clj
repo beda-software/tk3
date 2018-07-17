@@ -1,5 +1,6 @@
 (ns controller-tk3.model
-  (:require [controller-tk3.naming :as naming]))
+  (:require [controller-tk3.naming :as naming]
+            [cheshire.core :as json]))
 
 (defn inherited-namespace [x]
   (or (get-in x [:metadata :namespace]) "default"))
@@ -61,7 +62,7 @@
              :imagePullPolicy :Always
              :args ["jupyter"
                     "notebook"
-                    (str "--NotebookApp.token='" (get-in inst [:config :token]) "'")]
+                    (str "--NotebookApp.token='" (get-in inst [:config :jupyterToken]) "'")]
              :volumeMounts (container-volume-mounts inst)
              })]}})
 
@@ -88,13 +89,3 @@
                    :port 8888
                    :targetPort 8888}]}})
 
-(defn jupyter-ingress [inst]
-  {:apiVersion "extensions/v1beta1"
-   :kind "Ingress"
-   :metadata {:name (naming/ingress-name inst)
-              :namespace (inherited-namespace inst)
-              :labels (inherited-labels inst)}
-   :spec {:rules [{:host (get-in inst [:config :host])
-                   :http {:paths [{:path "/"
-                                   :backend {:serviceName (naming/service-name inst)
-                                             :servicePort 8888}}]}}]}})

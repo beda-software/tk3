@@ -2,11 +2,11 @@
   (:require [k8s.core :as k8s]
             [controller-tk3.naming :as naming]
             [controller-tk3.model :as model]
-            [cheshire.core :as json]
             [controller-tk3.utils :as ut]
-            [controller-tk3.fsm :as fsm]
             [unifn.core :as u]
             [controller-tk3.aidbox :as aidbox]))
+
+(defonce last-updated (atom nil))
 
 (defn pvc? [res]
   (and (map? res) (= (:kind res) "PersistentVolumeClaim")))
@@ -17,15 +17,15 @@
       res
       (k8s/patch spec))))
 
-(defmethod u/*fn ::init-instance-volumes [{inst :resource}]
-  (let [data-v (pvc-patch (model/instance-data-volume inst))]
-    (if (pvc? data-v)
+(defmethod u/*fn ::create-instance-volume [{inst :resource}]
+  (let [res (pvc-patch (model/instance-data-volume inst))]
+    (if (pvc? res)
       {::u/status :success}
       {::u/status :error
-       ::u/message (str "Instance volumes request error: " data-v)})))
+       ::u/message (str "Instance volume request error: " res)})))
 
 (defmethod u/*fn ::create-deployment [{inst :resource}]
-  (let [res (k8s/patch (model/jupyter-deployment inst))]
+  (let [res (k8s/patch (model/jupyter-deployment (assoc inst :status "waiting-app")))]
     (if (= (:kind res) "Status")
       {::u/status :error
        ::u/message (str res)}
@@ -38,73 +38,45 @@
        ::u/message (str res)}
       {::u/status :success})))
 
-(defmethod u/*fn ::create-ingress [{inst :resource}]
-  (let [res (k8s/patch (model/jupyter-ingress inst))]
-    (if (= (:kind res) "Status")
-      {::u/status :error
-       ::u/message (str res)}
-      {::u/status :success})))
-
-(defmethod u/*fn ::volumes-ready? [{inst :resource}]
-  (let [vols [(naming/data-volume-name inst)]
-        ready? (reduce
-                (fn [acc v]
-                  (let [pvc (k8s/find
-                             {:kind "PersistentVolumeClaim"
-                              :apiVersion "v1"
-                              :id v
-                              :ns naming/namespace})]
-                    (and acc (= "Bound" (get-in pvc [:status :phase])))))
-                true vols)]
-    (when-not ready?
-      {::u/status :stop})))
-
-(def fsm-main
-  {:initializing {:action-stack [::init-instance-volumes]
-                  :success :waiting-volumes
-                  :error :failed}
-   :waiting-volumes {:action-stack [::volumes-ready?
-                                    {::u/fn ::ut/success}]
-                     :success :volumes-are-ready
-                     :error :failed}
-   :volumes-are-ready {:action-stack [::create-deployment
-                                      ::create-service
-                                      ::create-ingress
-                                      {::u/fn ::ut/success}]
-                       :success :ready}
-   :ready {}
-   :failed {}})
-
 (defn- make-resource
-  [{:keys [boxCredentials databaseCredentials jupyterCredentials id status meta]}]
+  [{:keys [id boxCredentials databaseCredentials jupyterCredentials box status meta]}]
   {:id id
    :status status
-   :metadata {:annotations {:lastUpdated (:lastUpdated meta)}
+   :metadata {:annotations {:jupyter-instance-id id}
               :labels {:system "controller"}
               :namespace naming/namespace
-              :name (str "jupyterinstance-" id)}
+              :name (str "jupyterinstance-" (:id box))}
    :spec {:size "10Mi"
           :env [{:name "BOX_HOST"
                  :value (:host boxCredentials)}
                 {:name "BOX_TOKEN"
                  :value (:token boxCredentials)}]}
-   :config {:token (:token jupyterCredentials)
-            :host (:host jupyterCredentials)}})
+   :config {:jupyterToken (:token jupyterCredentials)}})
 
 (defn watch []
-  (let [max-last-updated (->> (k8s/query {:apiVersion "apps/v1beta1"
-                                          :kind "Deployment"
-                                          :ns naming/namespace}
-                                         {:labelSelector "system=controller"})
-                              :items
-                              (map #(get-in % [:metadata :annotations :lastUpdated]))
-                              sort
-                              last)]
-    (doseq [inst (aidbox/get-updated-instances max-last-updated)]
-      (condp (= (:state inst))
-        :deleted nil
+  (doseq [inst (aidbox/get-updated-instances @last-updated)]
+    ;; TODO: save last-updated
+    (condp = (:state inst)
+      :deleted nil
 
-        (fsm/process-state fsm-main (make-resource inst))))))
+      (u/*apply
+       [::create-instance-volume
+        ::create-deployment
+        ::create-service]
+       (make-resource inst))))
+
+  (let [deployments (->> (k8s/query {:apiVersion "apps/v1beta1"
+                                     :kind "Deployment"
+                                     :ns naming/namespace}
+                                    {:labelSelector "system=controller"})
+                         :items)]
+    (doseq [deployment deployments]
+      ;; TODO: Watch deployments states (failed/ready)
+      nil)))
 
 (comment
  (watch))
+
+;; TODO: Fetch JupyterInstance resources from aidbox on start
+;; TODO: use one unnamed token
+;; TODO: create custom nginx config
