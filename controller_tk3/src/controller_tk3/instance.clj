@@ -8,6 +8,8 @@
 
 (defonce last-updated (atom nil))
 
+(defonce instance-status-cache (atom {}))
+
 (defn pvc? [res]
   (and (map? res) (= (:kind res) "PersistentVolumeClaim")))
 
@@ -17,21 +19,21 @@
       res
       (k8s/patch spec))))
 
-(defmethod u/*fn ::create-instance-volume [{inst :resource}]
+(defmethod u/*fn ::patch-instance-volume [{inst :resource}]
   (let [res (pvc-patch (model/instance-data-volume inst))]
     (if (pvc? res)
       {::u/status :success}
       {::u/status :error
        ::u/message (str "Instance volume request error: " res)})))
 
-(defmethod u/*fn ::create-deployment [{inst :resource}]
+(defmethod u/*fn ::patch-deployment [{inst :resource}]
   (let [res (k8s/patch (model/jupyter-deployment (assoc inst :status "waiting-app")))]
     (if (= (:kind res) "Status")
       {::u/status :error
        ::u/message (str res)}
       {::u/status :success})))
 
-(defmethod u/*fn ::create-service [{inst :resource}]
+(defmethod u/*fn ::patch-service [{inst :resource}]
   (let [res (k8s/patch (model/jupyter-service inst))]
     (if (= (:kind res) "Status")
       {::u/status :error
@@ -55,15 +57,22 @@
 
 (defn watch []
   (doseq [inst (aidbox/get-updated-instances @last-updated)]
-    ;; TODO: save last-updated
+    (let [inst-last-updated (get-in inst [:meta :lastUpdated])]
+      (when (or (not @last-updated) (< @last-updated inst-last-updated))
+        (reset! last-updated inst-last-updated))
+      (swap! instance-status-cache assoc (:id inst) (:status inst)))
     (condp = (:state inst)
       :deleted nil
 
-      (u/*apply
-       [::create-instance-volume
-        ::create-deployment
-        ::create-service]
-       (make-resource inst))))
+      (let [{pipeline-status ::u/status
+             status-message ::u/message} (u/*apply
+                                          [::patch-instance-volume
+                                           ::patch-deployment
+                                           ::patch-service]
+                                          {::u/safe? true
+                                           :resource (make-resource inst)})]
+        (when (= pipeline-status :error)
+          (println "JUPYTER CONTROLLER ERROR: " status-message)))))
 
   (let [deployments (->> (k8s/query {:apiVersion "apps/v1beta1"
                                      :kind "Deployment"
@@ -71,12 +80,26 @@
                                     {:labelSelector "system=controller"})
                          :items)]
     (doseq [deployment deployments]
-      ;; TODO: Watch deployments states (failed/ready)
+      (let [instance-id (get-in deployment [:metadata :annotations :jupyter-instance-id])
+            prev-status (get @instance-status-cache instance-id)
+            replicas-count (get-in deployment [:status :readyReplicas])
+            curr-status (cond
+                          (and (= prev-status "initializing") (>= replicas-count 1))
+                          "ready"
+
+                          (and (= prev-status "ready") (= replicas-count 0))
+                          "failed"
+
+                          :else
+                          prev-status)]
+        (when-not (= prev-status curr-status)
+          (swap! instance-status-cache assoc instance-id curr-status)
+          (aidbox/patch-instance-status instance-id curr-status)))
       nil)))
 
 (comment
- (watch))
+  (watch)
+  )
 
-;; TODO: Fetch JupyterInstance resources from aidbox on start
 ;; TODO: use one unnamed token
 ;; TODO: create custom nginx config

@@ -14,7 +14,7 @@
 (defn- index-by [key-fn coll]
   (into {} (map (juxt key-fn identity) coll)))
 
-(defn- fetch [path params]
+(defn- fetch [path & [params]]
   (->
    @(http-client/get
      (str aidbox-url path)
@@ -31,12 +31,17 @@
         (map :resource))))
 
 (defn- fetch-updated-instances [& [since]]
-  (->> (fetch "/JupyterInstance/_history" (if since {:_since since} {}))
-       :entry
-       (map :resource)
-       reverse
-       (index-by :id)
-       vals))
+  (if since
+    (->> (fetch "/JupyterInstance/_history" {:_since since})
+        :entry
+        (map :resource)
+        reverse
+        (index-by :id)
+        vals)
+    ;; TODO: Add pagination
+    (->> (fetch "/JupyterInstance" {:_count 1000})
+         :entry
+         (map :resource))))
 
 (defn get-updated-instances [& [since]]
   (let [instances (fetch-updated-instances since)
