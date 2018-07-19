@@ -21,7 +21,10 @@
                (println "Start")
                (try
                  (while (not (Thread/interrupted))
-                   (watch)
+                   (try
+                     (watch)
+                     (catch Exception e
+                       (println "An error has occurred\n" e)))
                    (Thread/sleep 10000))
                  (catch java.lang.InterruptedException e
                    (println "Bye, bye")))))]

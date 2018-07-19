@@ -27,7 +27,7 @@
        ::u/message (str "Instance volume request error: " res)})))
 
 (defmethod u/*fn ::patch-deployment [{inst :resource}]
-  (let [res (k8s/patch (model/jupyter-deployment (assoc inst :status "waiting-app")))]
+  (let [res (k8s/patch (model/jupyter-deployment inst))]
     (if (= (:kind res) "Status")
       {::u/status :error
        ::u/message (str res)}
@@ -45,14 +45,14 @@
   {:id id
    :status status
    :metadata {:annotations {:jupyter-instance-id id}
-              :labels {:system "controller"}
+              :labels {:image "jupyter"}
               :namespace naming/namespace
               :name (str "jupyterinstance-" (:id box))}
    :spec {:size "10Mi"
-          :env [{:name "BOX_HOST"
-                 :value (:host boxCredentials)}
-                {:name "BOX_TOKEN"
-                 :value (:token boxCredentials)}]}
+          :env [{:name "BOX_URL"
+                 :value (:url boxCredentials)}
+                {:name "BOX_AUTHORIZATION"
+                 :value (:authorization boxCredentials)}]}
    :config {:jupyterToken (:token jupyterCredentials)}})
 
 (defn watch []
@@ -77,7 +77,7 @@
   (let [deployments (->> (k8s/query {:apiVersion "apps/v1beta1"
                                      :kind "Deployment"
                                      :ns naming/namespace}
-                                    {:labelSelector "system=controller"})
+                                    {:labelSelector "image=jupyter"})
                          :items)]
     (doseq [deployment deployments]
       (let [instance-id (get-in deployment [:metadata :annotations :jupyter-instance-id])
@@ -102,5 +102,3 @@
 
   (reset! last-updated nil)
   )
-
-;; TODO: use one unnamed token
