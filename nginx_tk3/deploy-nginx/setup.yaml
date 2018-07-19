@@ -23,7 +23,7 @@ spec:
             containerPort: 80
           env:
           - name: AIDBOX_BASE_DOMAIN 
-            value: 127.0.0.1.xip.io
+            value: 172.20.10.5.xip.io
 ---
 kind: Service
 apiVersion: v1
@@ -47,7 +47,7 @@ metadata:
   namespace: tk3
 spec:
   rules:
-  - host: "*.jupyter.127.0.0.1.xip.io"
+  - host: "*.jupyter.172.20.10.5.xip.io"
     http:
       paths:
       - path: /
