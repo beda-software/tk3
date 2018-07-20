@@ -139,6 +139,7 @@
   (-> @(http-client/delete
         (str (resource-url res (get-in res [:metadata :name])))
         {:headers (merge default-headers {"Content-Type" "application/json"})
+         :body (json/generate-string {:propagationPolicy "Foreground"})
          :insecure? true})
       :body
       (json/parse-string keyword)))

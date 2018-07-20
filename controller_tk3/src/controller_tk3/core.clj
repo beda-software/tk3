@@ -1,7 +1,8 @@
 (ns controller-tk3.core
   (:require [k8s.core :as k8s]
             [controller-tk3.model :as m]
-            [controller-tk3.instance :as instance])
+            [controller-tk3.instance :as instance]
+            [clojure.tools.logging :as log])
   (:gen-class))
 
 (defn watch []
@@ -18,16 +19,16 @@
   (stop)
   (let [thr (Thread.
              (fn []
-               (println "Start")
+               (log/debug "Start")
                (try
                  (while (not (Thread/interrupted))
                    (try
                      (watch)
                      (catch Exception e
-                       (println "An error has occurred\n" e)))
+                       (log/error "An error has occurred\n" e)))
                    (Thread/sleep 10000))
                  (catch java.lang.InterruptedException e
-                   (println "Bye, bye")))))]
+                   (log/debug "Bye, bye")))))]
     (reset! server thr)
     (.start thr)))
 

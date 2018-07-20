@@ -4,6 +4,7 @@
             [controller-tk3.model :as model]
             [controller-tk3.utils :as ut]
             [unifn.core :as u]
+            [clojure.tools.logging :as log]
             [controller-tk3.aidbox :as aidbox]))
 
 (defonce last-updated (atom nil))
@@ -19,26 +20,29 @@
       res
       (k8s/patch spec))))
 
+(defn- process-k8s-result [res]
+  (if (and (= (:kind res) "Status") (not= (:status res) "Success"))
+    {::u/status :error
+     ::u/message (str res)}
+    {::u/status :success}))
+
 (defmethod u/*fn ::patch-instance-volume [{inst :resource}]
-  (let [res (pvc-patch (model/instance-data-volume inst))]
-    (if (pvc? res)
-      {::u/status :success}
-      {::u/status :error
-       ::u/message (str "Instance volume request error: " res)})))
+  (process-k8s-result (pvc-patch (model/instance-data-volume inst))))
 
 (defmethod u/*fn ::patch-deployment [{inst :resource}]
-  (let [res (k8s/patch (model/jupyter-deployment inst))]
-    (if (= (:kind res) "Status")
-      {::u/status :error
-       ::u/message (str res)}
-      {::u/status :success})))
+  (process-k8s-result (k8s/patch (model/jupyter-deployment inst))))
 
 (defmethod u/*fn ::patch-service [{inst :resource}]
-  (let [res (k8s/patch (model/jupyter-service inst))]
-    (if (= (:kind res) "Status")
-      {::u/status :error
-       ::u/message (str res)}
-      {::u/status :success})))
+  (process-k8s-result (k8s/patch (model/jupyter-service inst))))
+
+(defmethod u/*fn ::delete-service [{inst :resource}]
+  (process-k8s-result (k8s/delete (model/jupyter-service inst))))
+
+(defmethod u/*fn ::delete-deployment [{inst :resource}]
+  (process-k8s-result (k8s/delete (model/jupyter-deployment inst))))
+
+(defmethod u/*fn ::delete-instance-volume [{inst :resource}]
+  (process-k8s-result (k8s/delete (model/instance-data-volume inst))))
 
 (defn- make-resource
   [{:keys [id boxCredentials databaseCredentials jupyterCredentials box status]}]
@@ -62,7 +66,16 @@
         (reset! last-updated inst-last-updated))
       (swap! instance-status-cache assoc (:id inst) (:status inst)))
     (condp = (:state inst)
-      :deleted nil
+      :deleted
+      (let [{pipeline-status ::u/status
+             status-message ::u/message} (u/*apply
+                                          [::delete-service
+                                           ::delete-deployment
+                                           ::delete-instance-volume]
+                                          {::u/safe? true
+                                           :resource (make-resource inst)})]
+        (when (= pipeline-status :error)
+          (log/error "error while deleting: " status-message)))
 
       (let [{pipeline-status ::u/status
              status-message ::u/message} (u/*apply
@@ -72,7 +85,7 @@
                                           {::u/safe? true
                                            :resource (make-resource inst)})]
         (when (= pipeline-status :error)
-          (println "JUPYTER CONTROLLER ERROR: " status-message)))))
+          (log/error "error while updating: " status-message)))))
 
   (let [deployments (->> (k8s/query {:apiVersion "apps/v1beta1"
                                      :kind "Deployment"
