@@ -17,8 +17,8 @@
                  [inflections "0.13.0"]]
   :main ^:skip-aot webapp-tk3.core
   :target-path "target/%s"
-  :profiles {:dev {:source-paths  ["test" "src" "../common_tk3/src"]
+  :profiles {:dev {:source-paths  ["test" "src"]
                    :plugins [[lein-dotenv "RELEASE"]]}
-             :uberjar {:source-paths  ["test" "src"  "../common_tk3/src"]
+             :uberjar {:source-paths  ["test" "src"]
                        :aot :all
                        :omit-source true}})
