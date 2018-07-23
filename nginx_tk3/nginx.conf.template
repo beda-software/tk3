@@ -63,7 +63,7 @@ http {
             # Allow websocket connections
             proxy_set_header                        Upgrade           $http_upgrade;
             proxy_set_header                        Connection        $connection_upgrade;
-
+            proxy_set_header                        Strict-Transport-Security max-age=0;
             proxy_set_header X-Real-IP              $the_real_ip;
 
             proxy_set_header X-Forwarded-For        $the_real_ip;
