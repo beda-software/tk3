@@ -1,9 +1,8 @@
 (ns controller-tk3.naming
-  (:require [clojure.string :as str]
-            #_[controller-tk3.utils :as ut]))
+  (:require [clojure.string :as str]))
 
 ;; The system is very sensitive to naming changes
-;; be carefull and backward compatible here
+;; be careful and backward compatible here
 
 (def api-group "tk3.io")
 (def api-version "v1")

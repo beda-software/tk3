@@ -1,6 +1,5 @@
 (ns controller-tk3.model
-  (:require [controller-tk3.naming :as naming]
-            [cheshire.core :as json]))
+  (:require [controller-tk3.naming :as naming]))
 
 (defn inherited-namespace [x]
   (or (get-in x [:metadata :namespace]) "default"))
@@ -88,4 +87,3 @@
           :ports [{:protocol "TCP"
                    :port 8888
                    :targetPort 8888}]}})
-

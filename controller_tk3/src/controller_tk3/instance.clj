@@ -2,7 +2,6 @@
   (:require [k8s.core :as k8s]
             [controller-tk3.naming :as naming]
             [controller-tk3.model :as model]
-            [controller-tk3.utils :as ut]
             [unifn.core :as u]
             [clojure.tools.logging :as log]
             [controller-tk3.aidbox :as aidbox]))
@@ -53,6 +52,7 @@
               :namespace naming/namespace
               :name (str "jupyterinstance-" (:id box))}
    :spec {:size "10Mi"
+          :image "bedasoftware/jupyter-aidbox:latest"
           :env [{:name "BOX_URL"
                  :value (:url boxCredentials)}
                 {:name "BOX_AUTHORIZATION"
@@ -114,4 +114,5 @@
   (watch)
 
   (reset! last-updated nil)
+
   )
