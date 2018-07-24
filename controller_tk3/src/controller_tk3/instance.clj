@@ -97,7 +97,7 @@
             prev-status (get @instance-status-cache instance-id)
             replicas-count (or (get-in deployment [:status :readyReplicas]) 0)
             curr-status (cond
-                          (and (= prev-status "initializing") (>= replicas-count 1))
+                          (and (not= prev-status "ready") (>= replicas-count 1))
                           "ready"
 
                           (and (= prev-status "ready") (= replicas-count 0))
