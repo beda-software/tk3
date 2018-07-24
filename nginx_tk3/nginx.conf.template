@@ -51,8 +51,6 @@ http {
     server {
         server_name ~^(?<box>[^.]+)\.jupyter\.${AIDBOX_BASE_DOMAIN}$;
         location / {
-            add_header Strict-Transport-Security "max-age=0" always;
-
             proxy_pass http://jupyterinstance-$box.tk3.svc.cluster.local:8888;
             proxy_set_header Host                   $host;
 
