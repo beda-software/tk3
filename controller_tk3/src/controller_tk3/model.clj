@@ -59,11 +59,12 @@
             :initContainers
             [(merge
               base-container-spec
-              {:name "jupyter-set-volume-permissions"
+              {:name "jupyter-setup-volumes"
                :command ["sh"
                          "-x"
                          "-c"
-                         (str/join " && " [(str "chown " naming/image-user " -R " naming/data-path)
+                         (str/join " && " [(str "cp -R /examples/* " naming/data-path)
+                                           (str "chown " naming/image-user " -R " naming/data-path)
                                            (str "chmod -R 0700 " naming/data-path)])]
                :securityContext {:runAsUser 0}})]
             :containers
