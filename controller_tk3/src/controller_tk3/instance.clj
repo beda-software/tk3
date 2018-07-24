@@ -51,8 +51,8 @@
               :labels {:image "jupyter"}
               :namespace naming/namespace
               :name (str "jupyterinstance-" (:id box))}
-   :spec {:size "10Mi"
-          :image "bedasoftware/jupyter-aidbox:latest"
+   :volumeSpec {:size "10Mi"}
+   :spec {:image "bedasoftware/jupyter-aidbox:latest"
           :env [{:name "BOX_URL"
                  :value (:url boxCredentials)}
                 {:name "BOX_AUTHORIZATION"

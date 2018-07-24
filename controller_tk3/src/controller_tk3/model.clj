@@ -31,7 +31,7 @@
     :labels (merge (inherited-labels inst) {:type "data"})
     :namespace (inherited-namespace inst)
     :annotations {"volume.beta.kubernetes.io/storage-class" (get-in inst [:spec :storageClass] "standard")}
-    :storage (get-in inst [:spec :size])}))
+    :storage (get-in inst [:volumeSpec :size])}))
 
 (defn volumes [inst]
   [(let [nm (naming/data-volume-name inst)]
@@ -50,9 +50,7 @@
                              (:spec inst)
                              {:imagePullPolicy :Always
                               :volumeMounts (container-volume-mounts inst)})]
-    {:kind "Pod"
-     :apiVersion "v1"
-     :metadata {:namespace (inherited-namespace inst)
+    {:metadata {:namespace (inherited-namespace inst)
                 :labels (merge
                          (inherited-labels inst)
                          {:service (naming/resource-name inst)})}
