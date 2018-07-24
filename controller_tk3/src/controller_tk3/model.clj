@@ -1,5 +1,6 @@
 (ns controller-tk3.model
-  (:require [controller-tk3.naming :as naming]))
+  (:require [controller-tk3.naming :as naming]
+            [clojure.string :as str]))
 
 (defn inherited-namespace [x]
   (or (get-in x [:metadata :namespace]) "default"))
@@ -42,28 +43,40 @@
     :subPath "data"}])
 
 (defn jupyter-pod [inst]
-  {:kind "Pod"
-   :apiVersion "v1"
-   :metadata {:namespace (inherited-namespace inst)
-              :labels (merge
-                       (inherited-labels inst)
-                       {:service (naming/resource-name inst)})}
-   :spec {:restartPolicy "Always"
-          :volumes (volumes inst)
-          :containers
-          [(merge
-            ;; TODO: use whitelist for images
-            ;; TODO: use "isolated namespace" to avoid network scanning
-            {:image "jupyter/base-notebook:latest"}
-            (:spec inst)
-            {:name "jupyter"
-             :ports [{:containerPort 8888}]
-             :imagePullPolicy :Always
-             :args ["jupyter"
-                    "notebook"
-                    (str "--NotebookApp.token='" (get-in inst [:config :jupyterToken]) "'")]
-             :volumeMounts (container-volume-mounts inst)
-             })]}})
+  (let [base-container-spec (merge
+                             ;; TODO: use whitelist for images
+                             ;; TODO: use "isolated namespace" to avoid network scanning
+                             {:image "jupyter/base-notebook:latest"}
+                             (:spec inst)
+                             {:imagePullPolicy :Always
+                              :volumeMounts (container-volume-mounts inst)})]
+    {:kind "Pod"
+     :apiVersion "v1"
+     :metadata {:namespace (inherited-namespace inst)
+                :labels (merge
+                         (inherited-labels inst)
+                         {:service (naming/resource-name inst)})}
+     :spec {:restartPolicy "Always"
+            :volumes (volumes inst)
+            :initContainers
+            [(merge
+              base-container-spec
+              {:name "jupyter-set-volume-permissions"
+               :command ["sh"
+                         "-x"
+                         "-c"
+                         (str/join " && " [(str "chown " naming/image-user " -R " naming/data-path)
+                                           (str "chmod -R 0700 " naming/data-path)])]
+               :securityContext {:runAsUser 0}})]
+            :containers
+            [(merge
+              base-container-spec
+              {:name "jupyter"
+               :ports [{:containerPort 8888}]
+               :args ["jupyter"
+                      "notebook"
+                      (str "--NotebookApp.token='" (get-in inst [:config :jupyterToken]) "'")]
+               })]}}))
 
 (defn jupyter-deployment [inst]
   (let [pod (jupyter-pod inst)]

@@ -9,7 +9,8 @@
 (def api (str api-group "/" api-version))
 
 ;; /home/jovyan is set in jupyter/base-notebook images
-(def data-path "/home/jovyan/work")
+(def image-user "jovyan")
+(def data-path (str "/home/" image-user "/work"))
 
 (def namespace "tk3")
 
